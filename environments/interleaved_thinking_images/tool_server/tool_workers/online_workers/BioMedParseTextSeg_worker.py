@@ -55,6 +55,12 @@ logger = build_logger(__file__, f"{__file__}_{worker_id}.log")
 np.random.seed(3)
 
 
+def base64_to_pil(b64_str):
+    if b64_str.startswith("data:image"):
+        b64_str = b64_str.split("base64,")[-1]
+    return load_image_from_base64(b64_str)
+
+
 def _parse_prompts(param: str):
     """
     Accept formats:
