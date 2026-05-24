@@ -36,6 +36,7 @@ print = functools.partial(print, flush=True)
 
 from tool_server.utils.utils import *
 from tool_server.utils.server_utils import *
+from tool_server.tf_eval.utils.utils import base64_to_pil, pil_to_base64
 from tool_server.tool_workers.online_workers.base_tool_worker import BaseToolWorker
 
 import matplotlib
@@ -53,12 +54,6 @@ GB = 1 << 30
 worker_id = str(uuid.uuid4())[:6]
 logger = build_logger(__file__, f"{__file__}_{worker_id}.log")
 np.random.seed(3)
-
-
-def base64_to_pil(b64_str):
-    if b64_str.startswith("data:image"):
-        b64_str = b64_str.split("base64,")[-1]
-    return load_image_from_base64(b64_str)
 
 
 def _parse_prompts(param: str):
