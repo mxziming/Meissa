@@ -1,13 +1,15 @@
 """
 OpenAI-compatible API backend.
 
-Works with any OpenAI-compatible endpoint, including:
-  - DashScope (Alibaba Cloud Qwen): https://dashscope.aliyuncs.com/compatible-mode/v1
-  - Together AI, OpenRouter, local vLLM server, etc.
+Works with any OpenAI-compatible endpoint:
+  - DashScope (Alibaba Cloud): https://dashscope.aliyuncs.com/compatible-mode/v1
+      model_name=qwen-vl-max             (flagship VLM, current = Qwen2.5-VL)
+      model_name=qwen2.5-vl-72b-instruct (pinned open-weights version)
+  - Local vLLM server (any Qwen-VL checkpoint)
 
 Example launch commands:
 
-  # Qwen2.5-VL-72B via DashScope
+  # qwen-vl-max via DashScope API
   python -m tool_server.tf_eval \
     --model openai_models \
     --model_args "model_name=qwen-vl-max,api_key=sk-xxx,base_url=https://dashscope.aliyuncs.com/compatible-mode/v1" \
@@ -120,14 +122,7 @@ class OpenaiModels(tp_model):
 
         # API models run one item at a time (rate-limit friendly)
         for item in batch:
-            # Strip system role — convert to first user message prefix if needed
-            messages = []
-            for msg in item.conversation:
-                if msg["role"] == "system":
-                    # Prepend system content as text into the first user message below
-                    messages.append(msg)
-                else:
-                    messages.append(msg)
+            messages = item.conversation
 
             fail_times = 0
             output_text = ""
