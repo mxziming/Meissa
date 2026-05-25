@@ -88,17 +88,12 @@ class MeissaModel(tp_model):
         trust_remote_code: bool = True,
         **kwargs,
     ):
-        try:
-            from transformers import AutoModelForCausalLM, AutoProcessor
-        except ImportError:
-            from transformers import AutoModelForVision2Seq as AutoModelForCausalLM
-            from transformers import AutoProcessor
-
+        from transformers import AutoModelForVision2Seq, AutoProcessor
         from qwen_vl_utils import process_vision_info
         self._process_vision_info = process_vision_info
 
         self.model_path = pretrained
-        self.model = AutoModelForCausalLM.from_pretrained(
+        self.model = AutoModelForVision2Seq.from_pretrained(
             self.model_path,
             torch_dtype=torch_dtype,
             device_map=device_map,
