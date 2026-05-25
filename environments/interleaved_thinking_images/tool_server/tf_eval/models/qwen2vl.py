@@ -16,12 +16,14 @@ logger = get_logger("qwen2vl_model",)
 
 class Qwen2VL(tp_model):
     def __init__(
-      self,  
-      pretrained : str = None,
+      self,
+      pretrained: str = None,
+      torch_dtype: str = "auto",
+      device_map: str = "auto",
     ):
         self.model_path = pretrained
         self.model = Qwen2VLForConditionalGeneration.from_pretrained(
-            self.model_path, torch_dtype="auto", device_map="cpu"
+            self.model_path, torch_dtype=torch_dtype, device_map=device_map
         )
         self.processor = AutoProcessor.from_pretrained(self.model_path)
         self.processor.tokenizer.padding_side = 'left'

@@ -258,6 +258,15 @@ class BaseToolInferencer(object):
 
         actions = []
 
+        # Strip <think>...</think> blocks so bare-JSON tool calls
+        # (Meissa-4B format) are visible to downstream parsers.
+        text_no_think = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+
+        # Also handle [FINAL] termination (Meissa-4B format)
+        if text_no_think.startswith("[FINAL]"):
+            # Not a tool call — caller will handle as final answer
+            return None
+
         # ======================================================
         # ======================================================
         xml_pattern = r"<tool_call>\s*(.*?)\s*</tool_call>"
@@ -307,14 +316,18 @@ class BaseToolInferencer(object):
 
         # ======================================================
         # ======================================================
-        full_obj = robust_parse(clean_text)
-        if isinstance(full_obj, dict):
-            if "actions" in full_obj and isinstance(full_obj["actions"], list):
-                return full_obj["actions"]
-            if "name" in full_obj:
-                return [full_obj]
-        elif isinstance(full_obj, list):
-            return full_obj
+        # Try both the markdown-stripped text and the think-stripped text.
+        # The think-stripped version handles Meissa-4B's bare-JSON format:
+        #   <think>reasoning</think>{"name": "BioMedParseTextSeg", ...}
+        for candidate in [clean_text, clean_markdown(text_no_think)]:
+            full_obj = robust_parse(candidate)
+            if isinstance(full_obj, dict):
+                if "actions" in full_obj and isinstance(full_obj["actions"], list):
+                    return full_obj["actions"]
+                if "name" in full_obj:
+                    return [full_obj]
+            elif isinstance(full_obj, list):
+                return full_obj
 
         # ======================================================
         # ======================================================

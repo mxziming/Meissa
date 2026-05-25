@@ -269,9 +269,16 @@ class DynamicBatchManager():
     
     def extract_final_answer(self, final_response: str):
         """
-        If the model returns the framework's Terminate JSON, parse ans from it.
-        Otherwise, fall back to returning the raw text.
+        Extract the final answer from the model's last response.
+
+        Supported formats:
+          - Qwen3-VL / Gemini: {"name": "Terminate", "arguments": {"ans": "..."}}
+          - Meissa-4B:         <think>...</think>[FINAL] yes
+          - Early-stop:        raw text (no tool call, no Terminate)
         """
+        import re
+        import json
+
         if final_response is None:
             return ""
         final_response = str(final_response)
@@ -279,16 +286,34 @@ class DynamicBatchManager():
         if self.max_rounds == 0:
             return final_response.strip()
 
+        # Meissa-4B format: strip think blocks (closed ones), then extract [FINAL]
+        text_no_think = re.sub(r"<think>.*?</think>", "", final_response, flags=re.DOTALL).strip()
+        if "[FINAL]" in text_no_think:
+            return text_no_think.split("[FINAL]", 1)[1].strip()
+
+        # Terminate JSON format (base Qwen3-VL / Gemini teacher).
+        # The model may embed the JSON inside <tool_call>...</tool_call> tags,
+        # so search the full response text (including inside think blocks).
         res_prefix = "{\"name\": \"Terminate\", \"arguments\": {\"ans\":"
-        res_postfix = "}"
+        if res_prefix in final_response:
+            temp = final_response.split(res_prefix, 1)[-1].strip()
+            raw = temp.split("}", 1)[0].strip()
+            # raw is a JSON string token like `"central and right portions"` —
+            # unwrap the surrounding quotes so the stored value is plain text.
+            try:
+                return json.loads(raw)
+            except (json.JSONDecodeError, ValueError):
+                # If not valid JSON, strip quotes manually as fallback.
+                if raw.startswith('"') and raw.endswith('"'):
+                    return raw[1:-1]
+                return raw
 
-        if res_prefix not in final_response:
-            # Early-stop case (no tool call, no Terminate): just return raw response
-            return final_response.strip()
-
-        temp = final_response.split(res_prefix, 1)[-1].strip()
-        res = temp.split(res_postfix, 1)[0].strip()
-        return res
+        # Early-stop fallback: return the raw response (also strips think blocks).
+        # If the last response is itself a tool call (hit max_rounds without
+        # Terminate), return empty string rather than the raw tool call JSON.
+        if "<tool_call>" in text_no_think or (text_no_think.startswith("{") and "\"name\"" in text_no_think):
+            return ""
+        return text_no_think if text_no_think else final_response.strip()
 
         
     def pop_qualified_items(self):

@@ -36,6 +36,7 @@ print = functools.partial(print, flush=True)
 
 from tool_server.utils.utils import *
 from tool_server.utils.server_utils import *
+from tool_server.tf_eval.utils.utils import base64_to_pil, pil_to_base64
 from tool_server.tool_workers.online_workers.base_tool_worker import BaseToolWorker
 
 import matplotlib
